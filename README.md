@@ -1,2 +1,2 @@
 # collabo
-Collaborative Bayesian Optimization
+A package for human-algorithm collaborative Bayesian optimization.
