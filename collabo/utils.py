@@ -19,8 +19,7 @@ Config.warnings["not_compiled"] = False
 
 
 def distribute_solutions(fixed_solutions, bounds, required):
-    """
-    A small optimization problem to optimally space solutions around the expert solutions
+    """A small optimization problem to optimally space solutions around the expert solutions
     """
 
     # normalize the fixed solutions

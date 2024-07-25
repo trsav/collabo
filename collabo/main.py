@@ -1,24 +1,23 @@
-from utils import *
+from .utils import * 
 from typing import List, Callable, Optional
 
 class Collaboration:
-    """
-    A class for collaborative optimization experiments.
+    """A class for collaborative optimization experiments.
 
     This class provides functionality for designing experiments, proposing solutions,
     and managing the optimization process in a collaborative setting.
 
-    Attributes:
-        data_location (str): The file path for storing and loading experiment data.
-        bounds (list): The bounds of the optimization problem in the form [(lower, upper), ...].
-        fun (Callable): The objective function to be optimized (optional)
-        aq (Callable): The acquisition function used for proposing new solutions.
-        d (int): The dimensionality of the optimization problem.
+    :param data_location (str): The file path for storing and loading experiment data.
+    :param bounds (List[List[float]]): The bounds of the optimization problem.
+    :param acquisition_function (Callable): The acquisition function used for proposing new solutions.
+    :param fun (Optional[Callable], optional): The objective function to be optimized. Defaults to None.
     """
 
     def __init__(
         self, data_location: Optional[str], bounds: List[List[float]], acquisition_function: Callable, fun: Optional[Callable] = None
     ):
+        """Constructor method
+        """
         try:
             self.data_location = data_location  # location of data
         except:
@@ -38,12 +37,10 @@ class Collaboration:
         return
 
     def load_data(self):
-        """
-        Load experiment data from the specified file location.
+        """Load experiment data from the specified file location.
 
         Raises:
             FileNotFoundError: If the specified file is not found.
-
         """
         try:
             with open(self.data_location) as f:
@@ -54,80 +51,95 @@ class Collaboration:
             raise FileNotFoundError(f"File at {self.data_location} not found")
 
     def save_data(self):
+        """Saves the data to a file.
+
+        This method saves the data stored in the `data` attribute to a file specified by the `data_location` attribute.
+
+        Returns:
+            None
+        """
         print("Saving data at ", self.data_location)
         with open(self.data_location, "w") as f:
             json.dump(self.data, f)
         f.close()
         return
 
-    def design_experiments(self, n_experiments, fixed_solutions=None):
-        # n_experiments is the total number of experiments to distrubute (including fixed solutions)
-        try:
-            _ = self.data
-            warnings.warn("Data already exists within the object and will be replaced")
-        except:
-            pass
+    def design_experiments(self, n_experiments: int, fixed_solutions: Optional[List[List[float]]] = None):
+            """Design of experiments either using Latin hypercube sampling or by optimally distributing around fixed solutions.
 
-        if fixed_solutions:
-            for solution in fixed_solutions:
-                if len(solution) != self.d:
-                    raise ValueError(
-                        f"Specified solution {solution} does not have correct dimensions. (Expected {self.d}, got {len(solution)})"
-                    )
-            designed_solutions = distribute_solutions(
-                fixed_solutions, self.bounds, n_experiments - len(fixed_solutions)
-            )
-        else:
-            # latin hypercube sampling
-            designed_solutions = []
-            for i in range(0, self.d):
-                s = np.linspace(self.bounds[i][0], self.bounds[i][1], n_experiments)
-                np.random.shuffle(s)
-                designed_solutions.append(s)
-            designed_solutions = np.array(designed_solutions).T.tolist()
+            Parameters:
+            - n_experiments (int): The total number of experiments to distribute (including fixed solutions).
+            - fixed_solutions (list): A list of fixed solutions. Each solution should have the same dimensions as self.d.
 
-        data = {"experiments": []}
-        for solution in designed_solutions:
-            data["experiments"].append({"solution": solution})
-
-        self.data = data
-        if self.data_location:
-            self.save_data()
-        else:
-            warnings.warn(
-                "No data location provided. Need this to either load existing data, or as a place to save new data. Nothing will be saved to or loaded from disk."
-            )
-
-        for experiment in self.data["experiments"]:
-            solution = experiment["solution"]
+            Returns:
+            None
+            """
             try:
-                _ = self.fun
-                objective_value = self.fun(solution)
+                _ = self.data
+                warnings.warn("Data already exists within the object and will be replaced")
             except:
+                pass
+
+            if fixed_solutions:
+                for solution in fixed_solutions:
+                    if len(solution) != self.d:
+                        raise ValueError(
+                            f"Specified solution {solution} does not have correct dimensions. (Expected {self.d}, got {len(solution)})"
+                        )
+                designed_solutions = distribute_solutions(
+                    fixed_solutions, self.bounds, n_experiments - len(fixed_solutions)
+                )
+            else:
+                # latin hypercube sampling
+                designed_solutions = []
+                for i in range(0, self.d):
+                    s = np.linspace(self.bounds[i][0], self.bounds[i][1], n_experiments)
+                    np.random.shuffle(s)
+                    designed_solutions.append(s)
+                designed_solutions = np.array(designed_solutions).T.tolist()
+
+            data = {"experiments": []}
+            for solution in designed_solutions:
+                data["experiments"].append({"solution": solution})
+
+            self.data = data
+            if self.data_location:
+                self.save_data()
+            else:
                 warnings.warn(
-                    "Either no function was provided or the function is not callable."
+                    "No data location provided. Need this to either load existing data, or as a place to save new data. Nothing will be saved to or loaded from disk."
                 )
 
-                while True:
-                    objective_value = input(
-                        f"Please input the objective value for the solution {solution}: "
+            for experiment in self.data["experiments"]:
+                solution = experiment["solution"]
+                try:
+                    _ = self.fun
+                    objective_value = self.fun(solution)
+                except:
+                    warnings.warn(
+                        "Either no function was provided or the function is not callable."
                     )
-                    try:
-                        objective_value = float(objective_value)
-                        break
-                    except:
-                        print(f"Objective value {objective_value} is not a number.")
 
-            experiment["objective"] = objective_value
+                    while True:
+                        objective_value = input(
+                            f"Please input the objective value for the solution {solution}: "
+                        )
+                        try:
+                            objective_value = float(objective_value)
+                            break
+                        except:
+                            print(f"Objective value {objective_value} is not a number.")
 
-        self.data = data
-        if self.data_location:
-            self.save_data()
-        else:
-            warnings.warn(
-                "No data location provided. Need this to either load existing data, or as a place to save new data. Nothing will be saved to or loaded from disk."
-            )
-        return
+                experiment["objective"] = objective_value
+
+            self.data = data
+            if self.data_location:
+                self.save_data()
+            else:
+                warnings.warn(
+                    "No data location provided. Need this to either load existing data, or as a place to save new data. Nothing will be saved to or loaded from disk."
+                )
+            return
 
     @staticmethod
     def parse_data(data):
@@ -355,9 +367,9 @@ class Collaboration:
         return
 
 
-f = lambda x: x[0] + x[1] + x[2] + x[3]
-collab = Collaboration('./data.json',bounds=[(0,5),(0,5),(0,5),(0,5)],fun=f)
-collab.design_experiments(4)
+# f = lambda x: x[0] + x[1] + x[2] + x[3]
+# collab = Collaboration('./data.json',bounds=[(0,5),(0,5),(0,5),(0,5)],fun=f)
+# collab.design_experiments(4)
 # # collab.load_data()
 # collab.propose_solutions(3)
 # collab.view_choices()
