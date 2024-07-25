@@ -3,6 +3,11 @@ version: 2
 sphinx:
   configuration: docs/source/conf.py
 
+python:
+  install:
+    - requirements: requirements.txt
+
+
 formats:
   - pdf
 
