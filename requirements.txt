@@ -3,3 +3,4 @@ scipy=1.13.1
 gpytorch
 tqdm 
 pymoo
+sphinx_book_theme
