@@ -1,9 +1,23 @@
 from utils import *
-
+from typing import List, Callable, Optional
 
 class Collaboration:
+    """
+    A class for collaborative optimization experiments.
+
+    This class provides functionality for designing experiments, proposing solutions,
+    and managing the optimization process in a collaborative setting.
+
+    Attributes:
+        data_location (str): The file path for storing and loading experiment data.
+        bounds (list): The bounds of the optimization problem in the form [(lower, upper), ...].
+        fun (Callable): The objective function to be optimized (optional)
+        aq (Callable): The acquisition function used for proposing new solutions.
+        d (int): The dimensionality of the optimization problem.
+    """
+
     def __init__(
-        self, data_location=None, bounds=None, aquisition_function=None, fun=None
+        self, data_location: Optional[str], bounds: List[List[float]], acquisition_function: Callable, fun: Optional[Callable] = None
     ):
         try:
             self.data_location = data_location  # location of data
@@ -19,11 +33,18 @@ class Collaboration:
             warnings.warn(
                 "No function provided, you will be prompted to input objective values..."
             )
-        self.aq = aquisition_function  # acquisition function
+        self.aq = acquisition_function  # acquisition function
         self.d = len(bounds)  # dimensions
         return
 
     def load_data(self):
+        """
+        Load experiment data from the specified file location.
+
+        Raises:
+            FileNotFoundError: If the specified file is not found.
+
+        """
         try:
             with open(self.data_location) as f:
                 self.data = json.load(f)
@@ -70,7 +91,12 @@ class Collaboration:
             data["experiments"].append({"solution": solution})
 
         self.data = data
-        self.save_data()
+        if self.data_location:
+            self.save_data()
+        else:
+            warnings.warn(
+                "No data location provided. Need this to either load existing data, or as a place to save new data. Nothing will be saved to or loaded from disk."
+            )
 
         for experiment in self.data["experiments"]:
             solution = experiment["solution"]
@@ -95,7 +121,12 @@ class Collaboration:
             experiment["objective"] = objective_value
 
         self.data = data
-        self.save_data()
+        if self.data_location:
+            self.save_data()
+        else:
+            warnings.warn(
+                "No data location provided. Need this to either load existing data, or as a place to save new data. Nothing will be saved to or loaded from disk."
+            )
         return
 
     @staticmethod
@@ -314,14 +345,19 @@ class Collaboration:
         experiment["objective"] = objective_value
 
         self.data["experiments"].append(experiment)
-        self.save_data()
+        if self.data_location:
+            self.save_data()
+        else:
+            warnings.warn(
+                "No data location provided. Need this to either load existing data, or as a place to save new data. Nothing will be saved to or loaded from disk."
+            )
         self.choices = None
         return
 
 
-# f = lambda x: x[0] + x[1] + x[2] + x[3]
-# collab = Collaboration('./data.json',bounds=[(0,5),(0,5),(0,5),(0,5)],fun=f)
-# collab.design_experiments(4)
+f = lambda x: x[0] + x[1] + x[2] + x[3]
+collab = Collaboration('./data.json',bounds=[(0,5),(0,5),(0,5),(0,5)],fun=f)
+collab.design_experiments(4)
 # # collab.load_data()
 # collab.propose_solutions(3)
 # collab.view_choices()
