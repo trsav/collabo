@@ -1,7 +1,7 @@
 from .utils import * 
 from typing import List, Callable, Optional
 
-class Collaboration:
+class Collaborator:
     """A class for collaborative optimization experiments.
 
     This class provides functionality for designing experiments, proposing solutions,
@@ -11,14 +11,12 @@ class Collaboration:
     :type data_location: str, optional
     :param bounds: The bounds of the problem.
     :type bounds: List[List[float]]
-    :param acquisition_function: The acquisition function to use for optimization.
-    :type acquisition_function: Callable
     :param fun: The objective function to use for optimization.
     :type fun: Callable, optional
     """
 
     def __init__(
-        self, data_location: Optional[str], bounds: List[List[float]], acquisition_function: Callable, fun: Optional[Callable] = None
+        self, data_location: Optional[str], bounds: List[List[float]], fun: Optional[Callable] = None
     ):
         """Constructor method
         """
@@ -36,7 +34,6 @@ class Collaboration:
             warnings.warn(
                 "No function provided, you will be prompted to input objective values..."
             )
-        self.aq = acquisition_function  # acquisition function
         self.d = len(bounds)  # dimensions
         return
 
@@ -399,7 +396,7 @@ class Collaboration:
 
 
 # f = lambda x: x[0] + x[1] + x[2] + x[3]
-# collab = Collaboration('./data.json',bounds=[(0,5),(0,5),(0,5),(0,5)],fun=f)
+# collab = Collaborator('./data.json',bounds=[(0,5),(0,5),(0,5),(0,5)],fun=f)
 # collab.design_experiments(4)
 # # collab.load_data()
 # collab.propose_solutions(3)
