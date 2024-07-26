@@ -110,13 +110,6 @@ We're constantly working to improve Collabo. Here are some features we're planni
 - [ ] Enhance documentation with more examples and use cases
 - [ ] Develop a graphical user interface for easier interaction
 
-## Citation 
-
-```bibtex
-
-
-```
-
 ## 🤝 Contributing
 
 We welcome contributions from the community! If you'd like to contribute, please:
