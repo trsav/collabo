@@ -1,4 +1,4 @@
-collabo documentation
+Collabo documentation
 =====================
 
 Main Module
