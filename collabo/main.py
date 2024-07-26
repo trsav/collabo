@@ -7,10 +7,14 @@ class Collaboration:
     This class provides functionality for designing experiments, proposing solutions,
     and managing the optimization process in a collaborative setting.
 
-    :param data_location (str): The file path for storing and loading experiment data.
-    :param bounds (List[List[float]]): The bounds of the optimization problem.
-    :param acquisition_function (Callable): The acquisition function used for proposing new solutions.
-    :param fun (Optional[Callable], optional): The objective function to be optimized. Defaults to None.
+    :param data_location: The file path for storing and loading experiment data.
+    :type data_location: str, optional
+    :param bounds: The bounds of the problem.
+    :type bounds: List[List[float]]
+    :param acquisition_function: The acquisition function to use for optimization.
+    :type acquisition_function: Callable
+    :param fun: The objective function to use for optimization.
+    :type fun: Callable, optional
     """
 
     def __init__(
@@ -55,8 +59,7 @@ class Collaboration:
 
         This method saves the data stored in the `data` attribute to a file specified by the `data_location` attribute.
 
-        Returns:
-            None
+        :return: None
         """
         print("Saving data at ", self.data_location)
         with open(self.data_location, "w") as f:
@@ -67,12 +70,12 @@ class Collaboration:
     def design_experiments(self, n_experiments: int, fixed_solutions: Optional[List[List[float]]] = None):
             """Design of experiments either using Latin hypercube sampling or by optimally distributing around fixed solutions.
 
-            Parameters:
-            - n_experiments (int): The total number of experiments to distribute (including fixed solutions).
-            - fixed_solutions (list): A list of fixed solutions. Each solution should have the same dimensions as self.d.
+            :param n_experiments: The total number of experiments to distribute (including fixed solutions).
+            :type n_experiments: int
+            :param fixed_solutions: A list of fixed solutions. Each solution should have the same dimensions as self.d.
+            :type fixed_solutions: List[List[float]], optional
 
-            Returns:
-            None
+            :return: None
             """
             try:
                 _ = self.data
@@ -143,7 +146,14 @@ class Collaboration:
 
     @staticmethod
     def parse_data(data):
-        # reads data from datastore into convenient arrays
+        """Parse the data into solutions and objectives.
+
+        :param data: The data to parse.
+        :type data: dict
+
+        :return: Tuple[np.array, np.array] of solutions and objectives in row-major order.
+        """
+
         solutions = []
         objectives = []
         # iterate over data
@@ -157,6 +167,16 @@ class Collaboration:
         return solutions, objectives
 
     def propose_solutions(self, n_solutions):
+        """Proposes alternate solutions via multi-objective approach to high-throughput Bayesian optimization.
+        
+        :param n_solutions: The number of alternate solutions to propose.
+        :type n_solutions: int
+
+        :return: List[List[float]] of proposed solutions.
+
+        """
+
+
         inputs, outputs = self.parse_data(self.data)
         mean_outputs = np.mean(outputs)
         std_outputs = np.std(outputs)
@@ -314,6 +334,10 @@ class Collaboration:
         return alternate_solutions
 
     def view_choices(self):
+        """View the proposed choices.
+
+        :return: None
+        """
         try:
             _ = self.choices
         except:
@@ -325,6 +349,13 @@ class Collaboration:
         return
 
     def make_choice(self, choice):
+        """Make a choice from the proposed solutions.
+
+        :param choice: The index of the choice to make, starting from 1.
+        :type choice: int
+
+        :return: None
+        """
         try:
             _ = self.choices
         except:
