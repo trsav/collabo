@@ -14,12 +14,23 @@ from pymoo.operators.sampling.rnd import FloatRandomSampling
 from pymoo.termination import get_termination
 from pymoo.core.problem import ElementwiseProblem, Problem
 from pymoo.config import Config
+from typing import Optional
 
 Config.warnings["not_compiled"] = False
 
 
-def distribute_solutions(fixed_solutions, bounds, required):
-    """A small optimization problem to optimally space solutions around the expert solutions
+def distribute_solutions(fixed_solutions: Optional[np.ndarray], bounds: np.ndarray, required: int):
+    """A small optimization problem to optimally space solutions around the expert solutions. 
+
+    `required` solutions are distributed around the `fixed_solutions` in the solution space defined by `bounds`.
+    If there are no fixed solutions, the solutions are distributed using Latin Hypercube Sampling.
+
+    :param fixed_solutions: Expert-defined solutions to be used as fixed points within the solution space.
+    :type fixed_solutions: np.ndarray, optional
+    :param bounds: The bounds of the solution space.
+    :type bounds: np.ndarray
+    :param required: The number of solutions to distribute.
+    :type required: int
     """
 
     # normalize the fixed solutions
