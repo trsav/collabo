@@ -11,7 +11,7 @@
 **A Python package for human-algorithm collaborative Bayesian optimization**
 
 <p align="center">
-  <img src="plot.png" width="100%">
+  <img src="plot.png" width="60%">
 </p>
 
 
