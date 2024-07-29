@@ -15,6 +15,7 @@ from pymoo.termination import get_termination
 from pymoo.core.problem import ElementwiseProblem, Problem
 from pymoo.config import Config
 from typing import Optional
+import matplotlib.pyplot as plt
 
 Config.warnings["not_compiled"] = False
 
@@ -62,7 +63,7 @@ def distribute_solutions(fixed_solutions: Optional[np.ndarray], bounds: np.ndarr
         args=(fixed_solutions),
         method="Nelder-Mead",
         bounds=[[0, 1] for i in range(required * len(bounds))],
-        options={"disp": True, "maxiter": 10000},
+        options={"disp": True, "maxiter": 100000},
     )
     optimal_solutions = np.reshape(res.x, (required, len(bounds)))
     # add the fixed solutions back in

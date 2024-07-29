@@ -162,6 +162,26 @@ class Collaborator:
         objectives = np.array(objectives).reshape(-1, 1)
 
         return solutions, objectives
+    
+    @staticmethod
+    def aq(x, args):
+        gp = args[0]
+        f_best = torch.tensor(args[1])
+        x = np.array([x])
+        x = torch.tensor(x)
+        dist = gp(x)
+        m = dist.mean
+        sigma = torch.sqrt(dist.variance)
+        diff = m - f_best
+        p_z = torch.distributions.Normal(0, 1)
+        Z = diff / sigma
+        expected_improvement = diff * p_z.cdf(Z) + sigma * torch.exp(
+            p_z.log_prob(Z)
+        )
+        # convert to numpy
+        expected_improvement = expected_improvement.detach().numpy()
+        return -expected_improvement
+
 
     def propose_solutions(self, n_solutions):
         """Proposes alternate solutions via multi-objective approach to high-throughput Bayesian optimization.
@@ -172,7 +192,6 @@ class Collaborator:
         :return: List[List[float]] of proposed solutions.
 
         """
-
 
         inputs, outputs = self.parse_data(self.data)
         mean_outputs = np.mean(outputs)
@@ -190,24 +209,21 @@ class Collaborator:
             ub = float((self.bounds[i][1] - mean_inputs[i]) / std_inputs[i])
             normalized_bounds.append([lb, ub])
 
+
         gp = train_gp(inputs, outputs, noise=False)
 
-        def aq(x, args):
-            f_best = args[0]
-            x = np.array([x])
-            x = torch.tensor(x)
-            dist = gp(x)
-            m = dist.mean
-            sigma = torch.sqrt(dist.variance)
-            diff = m - f_best
-            p_z = torch.distributions.Normal(0, 1)
-            Z = diff / sigma
-            expected_improvement = diff * p_z.cdf(Z) + sigma * torch.exp(
-                p_z.log_prob(Z)
-            )
-            # convert to numpy
-            expected_improvement = expected_improvement.detach().numpy()
-            return -expected_improvement
+        # save current 'state' of the data and GP.
+        self.state = {
+            "inputs": inputs,
+            "outputs": outputs,
+            "mean_inputs": mean_inputs,
+            "std_inputs": std_inputs,
+            "mean_outputs": mean_outputs,
+            "std_outputs": std_outputs,
+            "normalized_bounds": normalized_bounds,
+            "gp": gp,
+        }
+
 
         evolutionary_upper_bounds = [b[1] for b in normalized_bounds]
         evolutionary_lower_bounds = [b[0] for b in normalized_bounds]
@@ -226,7 +242,7 @@ class Collaborator:
         )
 
         class MO_aq(Problem):
-            def __init__(self):
+            def __init__(self, aq_func,gp):
                 super().__init__(
                     n_var=len(evolutionary_lower_bounds),
                     n_obj=1,
@@ -234,11 +250,14 @@ class Collaborator:
                     xl=np.array(evolutionary_lower_bounds),
                     xu=np.array(evolutionary_upper_bounds),
                 )
+                self.aq_func = aq_func
+                self.gp = gp
+
 
             def _evaluate(self, x, out, *args, **kwargs):
-                out["F"] = [aq(x, args=(max(outputs)))]
+                out["F"] = [self.aq_func(x, args=(self.gp,max(outputs)))]
 
-        problem = MO_aq()
+        problem = MO_aq(self.aq,self.state["gp"])
         res = minimize_mo(
             problem, algorithm, termination, seed=1, save_history=False, verbose=False
         )
@@ -265,7 +284,7 @@ class Collaborator:
         )
 
         class MO_aq(Problem):
-            def __init__(self):
+            def __init__(self,aq_func,gp):
                 super().__init__(
                     n_var=len(mo_lower_bounds),
                     n_obj=2,
@@ -273,11 +292,13 @@ class Collaborator:
                     xl=np.array(mo_lower_bounds),
                     xu=np.array(mo_upper_bounds),
                 )
+                self.aq_func = aq_func
+                self.gp = gp
 
             def _evaluate(self, x, out, *args, **kwargs):
                 x_sols = np.array(np.split(x, n_solutions - 1, axis=1))
                 d = x_sols.shape[0]
-                aq_list = np.sum([aq(x_i, (max(outputs))) for x_i in x_sols], axis=0)[0]
+                aq_list = np.sum([self.aq_func(x_i, (self.gp,max(outputs))) for x_i in x_sols], axis=0)[0]
                 if d == 1:
                     app = np.array(
                         [[optimal_solution for i in range(len(x_sols[0, :, 0]))]]
@@ -300,7 +321,7 @@ class Collaborator:
 
                 out["F"] = [aq_list, -K_list]
 
-        problem = MO_aq()
+        problem = MO_aq(self.aq,self.state["gp"])
         res = minimize_mo(
             problem, algorithm, termination, seed=1, save_history=True, verbose=True
         )
@@ -330,10 +351,10 @@ class Collaborator:
         self.choices = alternate_solutions
         return alternate_solutions
 
-    def view_choices(self):
-        """View the proposed choices.
+    def return_choices(self):
+        """Returns the proposed choices.
 
-        :return: None
+        :return: List[List[float]] of proposed solutions.
         """
         try:
             _ = self.choices
@@ -341,9 +362,87 @@ class Collaborator:
             raise ValueError(
                 "No choices have been proposed. Please call propose_solutions() first."
             )
-        for i, choice in enumerate(self.choices):
-            print(f"Choice {i+1}: {choice}")
-        return
+        return self.choices
+
+
+    def plot_current_choices(self,path):
+        """Plot the proposed solutions and previous data, alongside the current Gaussian process.
+        NOTE: Only available for 1D functions, and can only be accessed between `propose_solutions()` and `make_choice()`.
+        
+        :param path: The path to save the plot.
+        :type path: str
+
+        :return: None
+        """
+
+        try:
+            _ = self.choices
+        except:
+            raise ValueError(
+                "No choices have been proposed. Please call propose_solutions() first."
+            )
+        
+        if self.d != 1:
+            raise ValueError("Plotting is only available for 1D functions.")
+        
+        current_gp = self.state["gp"]
+        x_test = np.linspace(self.state["normalized_bounds"][0][0], self.state["normalized_bounds"][0][1], 100)
+        y_test = current_gp(torch.tensor(x_test.reshape(-1, 1)))
+        aq_test = [-self.aq(x_i, (self.state['gp'],max(self.state['outputs']))).item() for x_i in x_test]
+        mu = y_test.mean
+        sigma = torch.sqrt(y_test.variance)
+
+        # unnormalize the data for plotting
+        mu = (mu * self.state['std_outputs']) + self.state['mean_outputs']
+        sigma = sigma
+        x_test = (x_test * self.state['std_inputs']) + self.state['mean_inputs']
+        inputs = (self.state['inputs'] * self.state['std_inputs']) + self.state['mean_inputs']
+        outputs = (self.state['outputs'] * self.state['std_outputs']) + self.state['mean_outputs']
+
+        fig,axs = plt.subplots(2,1,figsize=(6,3),constrained_layout=True,sharex=True)
+        axs[0].plot(x_test, mu.detach().numpy(), label="Mean",c='k')
+        axs[0].fill_between(
+            x_test,
+            mu.detach().numpy() - 1.96 * sigma.detach().numpy(),
+            mu.detach().numpy() + 1.96 * sigma.detach().numpy(),
+            label="95% CI",
+            alpha=0.1,
+            color='k',
+            lw=0
+        )
+
+        axs[1].plot(x_test, aq_test, label="Acquisition Function",c='k')
+        axs[1].fill_between(
+            x_test,
+            np.zeros_like(x_test),
+            aq_test,
+            label="Acquisition Function",
+            alpha=0.1,
+            color='k',
+            lw=0
+        )
+
+
+        axs[0].scatter(inputs, outputs, label="Data",c='k',marker='x')
+
+        min_f = axs[0].get_ylim()[0]    
+        max_f = axs[0].get_ylim()[1]
+        min_u = axs[1].get_ylim()[0]    
+        max_u = axs[1].get_ylim()[1]
+        f_range = max_f - min_f
+        # extend y axis down slightly 
+        axs[0].set_ylim(min_f - f_range*0.2, max_f)
+        for i,c in enumerate(self.choices):
+            axs[0].plot([c,c], [min_f,max_f], label="Proposed" if i == 0 else None,c='k',ls='dashed')
+            axs[1].plot([c,c], [min_u,max_u],c='k',ls='dashed')
+            axs[0].text(c[0], min_f-f_range*0.15, f"Choice {i+1}", fontsize=8, ha='center', va='bottom')
+
+        axs[0].legend(frameon=False,ncols=4,loc='upper center',bbox_to_anchor=(0.5,1.25))
+        axs[1].set_xlabel("x")
+        axs[0].set_ylabel("f(x)")
+        axs[1].set_ylabel("U(x)")
+        fig.savefig(path,dpi=400)
+
 
     def make_choice(self, choice):
         """Make a choice from the proposed solutions.
@@ -394,17 +493,20 @@ class Collaborator:
         self.choices = None
         return
 
+# # 1d function 
+# f = lambda x: np.sin(5*x[0]) 
 
-# f = lambda x: x[0] + x[1] + x[2] + x[3]
-# collab = Collaborator('./data.json',bounds=[(0,5),(0,5),(0,5),(0,5)],fun=f)
-# collab.design_experiments(4)
+# collab = Collaborator('./data.json',bounds=[(0,3)],fun=f)
+# collab.design_experiments(6)
 # # collab.load_data()
 # collab.propose_solutions(3)
-# collab.view_choices()
-# collab.make_choice(0)
+# collab.plot_current_choices('plot.png')
 
 
-# collab.design_experiments(10,fixed_solutions=[[1,1,1,1],[2,2,2,2],[3,3,3,3]])
-# collab.load_data()
+# # collab.make_choice(0)
 
-# collab.load_data('data.json')
+
+# # collab.design_experiments(10,fixed_solutions=[[1,1,1,1],[2,2,2,2],[3,3,3,3]])
+# # collab.load_data()
+
+# # collab.load_data('data.json')

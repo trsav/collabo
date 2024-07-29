@@ -8,6 +8,12 @@
 
 **A Python package for human-algorithm collaborative Bayesian optimization**
 
+<p align="center">
+  <img src="plot.png" width="100%">
+</p>
+
+
+
 </div>
 
 ## 📖 About
@@ -30,6 +36,7 @@ pip install collabo
 
 Collabo offers flexibility in its usage, accommodating both manual input scenarios and function-based evaluations.
 
+
 ### Basic Usage
 
 ```python
@@ -44,11 +51,18 @@ colleague.design_experiments(10)
 # Propose solutions
 colleague.propose_solutions(3)
 
-# View proposed solutions
-colleague.view_choices()
+# Return proposed solutions
+choices = colleague.return_choices()
+
+# Plot current proposals (only for 1D functions)
+colleague.plot_current_choices()
 
 # Choose a solution to evaluate
 colleague.make_choice(2)
+
+# Save current data
+colleague.save_data()
+
 ```
 
 ### Expert-Informed Design
@@ -109,10 +123,10 @@ We're constantly working to improve Collabo. Here are some features we're planni
 - [ ] Implement storage and visualization of proposed and selected choices
 - [ ] Enhance documentation with more examples and use cases
 - [ ] Develop a graphical user interface for easier interaction
-
+  
 ## 🤝 Contributing
 
-We welcome contributions from the community! If you'd like to contribute, please:
+If you'd like to contribute, please:
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
