@@ -17,7 +17,7 @@
 
 ## 📖 About
 
-<img align="left" width="500" src="plot.png" />
+<img align="left" width="450" src="plot.png" />
 
 Collabo is a tool designed to facilitate collaboration between humans and Bayesian optimization. It will propose multiple solutions, from which a human selects, as opposed to a single one at each iteration by solving a high-throughput Bayesian optimization problem using multi-objective optimization. 
 
